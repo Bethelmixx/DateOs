@@ -7,14 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAppStore } from "@/lib/app-store";
-import {
-  CATEGORIES,
-  PROBLEM_TYPES,
-  SEVERITIES,
-  type CategoryId,
-  type SeverityId,
-} from "@/lib/categories";
-import { DEFAULT_CENTER } from "@/lib/geo";
+import { CATEGORIES, PROBLEM_TYPES, SEVERITIES, type CategoryId, type SeverityId } from "@/lib/categories";
 import { compressImage } from "@/lib/image";
 import { createReport } from "@/lib/reports/server";
 import { cn } from "@/lib/utils";
@@ -24,7 +17,6 @@ export function CreateReportSheet() {
   const setCreateOpen = useAppStore((s) => s.setCreateOpen);
   const reportLocation = useAppStore((s) => s.reportLocation);
   const userLocation = useAppStore((s) => s.userLocation);
-  const mapCenter = useAppStore((s) => s.mapCenter);
   const setReportLocation = useAppStore((s) => s.setReportLocation);
   const pinPickMode = useAppStore((s) => s.pinPickMode);
   const queryClient = useQueryClient();
@@ -36,11 +28,12 @@ export function CreateReportSheet() {
   const [photo, setPhoto] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const loc = reportLocation ?? userLocation ?? mapCenter ?? DEFAULT_CENTER;
+  const loc = reportLocation ?? userLocation;
+  const canPublish = Boolean(loc);
 
   useEffect(() => {
-    if (open && !reportLocation) setReportLocation(loc);
-  }, [open, loc, reportLocation, setReportLocation]);
+    if (open && !reportLocation && userLocation) setReportLocation(userLocation);
+  }, [open, userLocation, reportLocation, setReportLocation]);
 
   useEffect(() => {
     setProblemType(PROBLEM_TYPES[category][0].id);
@@ -54,8 +47,8 @@ export function CreateReportSheet() {
           problemType,
           severity,
           description,
-          lat: loc.lat,
-          lng: loc.lng,
+          lat: loc!.lat,
+          lng: loc!.lng,
           photoData: photo,
         },
       }),
@@ -101,14 +94,16 @@ export function CreateReportSheet() {
         <div>
           <h2 className="font-display text-xl font-semibold tracking-tight">Nuevo reporte</h2>
           <p className="mt-1 text-sm text-muted">
-            {pinPickMode ? "Toca el mapa para ubicar el pin." : "Se publicará en tu ubicación."}
+            {pinPickMode || !userLocation
+              ? "Toca el mapa para ubicar el pin."
+              : "Se publicará en tu ubicación."}
           </p>
         </div>
 
         <div className="flex items-center gap-2 rounded-xl border border-border bg-surface-2 px-3 py-2 text-xs text-muted">
           <MapPin className="size-4 text-primary" />
           <span className="tabular-nums">
-            {loc.lat.toFixed(5)}, {loc.lng.toFixed(5)}
+            {loc ? `${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}` : "Sin ubicación — toca el mapa"}
           </span>
         </div>
 
@@ -186,10 +181,13 @@ export function CreateReportSheet() {
 
         <Button
           className="w-full"
-          disabled={mutation.isPending}
-          onClick={() => mutation.mutate()}
+          disabled={mutation.isPending || !canPublish}
+          onClick={() => {
+            if (!loc) return;
+            mutation.mutate();
+          }}
         >
-          {mutation.isPending ? "Publicando…" : "Publicar reporte"}
+          {mutation.isPending ? "Publicando…" : canPublish ? "Publicar reporte" : "Ubica el pin en el mapa"}
         </Button>
       </div>
     </Drawer>

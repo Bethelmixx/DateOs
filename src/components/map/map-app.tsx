@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AssistiveFab } from "@/components/chrome/assistive-fab";
 import { StatusLegend } from "@/components/chrome/status-legend";
@@ -34,10 +34,7 @@ export function MapApp() {
   useEffect(() => setMounted(true), []);
 
   useEffect(() => {
-    if (!navigator.geolocation) {
-      setReportLocation(DEFAULT_CENTER);
-      return;
-    }
+    if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
@@ -48,7 +45,7 @@ export function MapApp() {
         setFocusToken((n) => n + 1);
       },
       () => {
-        setReportLocation(DEFAULT_CENTER);
+        setFocusTarget(DEFAULT_CENTER);
       },
       { enableHighAccuracy: true, timeout: 9000, maximumAge: 60_000 },
     );
@@ -56,20 +53,20 @@ export function MapApp() {
 
   const padded = bounds ? padBounds(bounds) : null;
   const query = useQuery({
-    queryKey: ["reports", padded],
-    queryFn: () => listNearbyReports({ data: padded! }),
+    queryKey: ["reports", padded, categories, statuses],
+    queryFn: () =>
+      listNearbyReports({
+        data: {
+          ...padded!,
+          categories,
+          statuses,
+        },
+      }),
     enabled: Boolean(padded),
-    refetchInterval: 15_000,
+    refetchInterval: 5_000,
   });
 
-  const reports = useMemo(() => {
-    const all = query.data ?? [];
-    return all.filter((r) => {
-      if (categories.length && !categories.includes(r.category)) return false;
-      if (statuses.length && !statuses.includes(r.status)) return false;
-      return true;
-    });
-  }, [query.data, categories, statuses]);
+  const reports = query.data ?? [];
 
   const selected = reports.find((r) => r.id === selectedId);
 
@@ -92,7 +89,7 @@ export function MapApp() {
     );
   }
 
-  const empty = mounted && !query.isLoading && reports.length === 0;
+  const empty = mounted && !query.isLoading && !query.isError && reports.length === 0;
 
   return (
     <div className="relative h-dvh w-full overflow-hidden bg-bg">
@@ -135,6 +132,15 @@ export function MapApp() {
       <div className="pointer-events-none absolute bottom-6 left-4 z-20">
         <StatusLegend />
       </div>
+
+      {query.isError ? (
+        <div className="pointer-events-none absolute inset-x-0 top-28 z-10 flex justify-center px-6">
+          <div className="rounded-2xl border border-status-red/40 bg-surface/92 px-4 py-3 text-center shadow-[var(--shadow-panel)] backdrop-blur-sm">
+            <p className="text-sm font-medium">No se pudieron cargar los reportes</p>
+            <p className="mt-1 text-xs text-muted">Revisa la conexión e intenta de nuevo.</p>
+          </div>
+        </div>
+      ) : null}
 
       {empty ? (
         <div className="pointer-events-none absolute inset-x-0 top-28 z-10 flex justify-center px-6">

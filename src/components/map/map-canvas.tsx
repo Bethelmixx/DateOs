@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Map as LeafletMap, Marker as LeafletMarker, LeafletMouseEvent } from "leaflet";
 import type { Report } from "@/lib/reports/types";
-import { DEFAULT_CENTER, DEFAULT_ZOOM, type BoundingBox, type LatLng } from "@/lib/geo";
+import { DEFAULT_CENTER, DEFAULT_ZOOM, isValidLatLng, type BoundingBox, type LatLng } from "@/lib/geo";
 
 const TILES = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
 
@@ -66,12 +66,22 @@ export function MapCanvas({
         center: [DEFAULT_CENTER.lat, DEFAULT_CENTER.lng],
         zoom: DEFAULT_ZOOM,
       });
-      L.tileLayer(TILES, {
+      const tiles = L.tileLayer(TILES, {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; CARTO',
         subdomains: "abcd",
         maxZoom: 19,
       }).addTo(map);
       map.attributionControl.setPrefix("");
+      let switched = false;
+      tiles.on("tileerror", () => {
+        if (switched) return;
+        switched = true;
+        map.removeLayer(tiles);
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
+          maxZoom: 19,
+        }).addTo(map);
+      });
 
       const emit = () => {
         const b = map.getBounds();
@@ -129,6 +139,7 @@ export function MapCanvas({
     }
 
     for (const report of reports) {
+      if (!isValidLatLng(report.lat, report.lng)) continue;
       const html = `<div class="av-marker av-marker--${report.status}${report.id === selectedId ? " av-marker--selected" : ""}"><span></span></div>`;
       const icon = L.divIcon({
         className: "av-marker-wrap",

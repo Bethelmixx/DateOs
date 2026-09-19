@@ -81,10 +81,15 @@ export function severityLabel(id: string) {
   return SEVERITIES.find((s) => s.id === id)?.label ?? id;
 }
 
-export function statusFromConfirmations(count: number): StatusId {
-  if (count >= 10) return "confirmed";
-  if (count >= 1) return "pending";
+export function statusFromVotes(confirm: number, resolved: number): StatusId {
+  if (confirm >= 10) return "confirmed";
+  if (resolved >= 10 && resolved >= confirm) return "confirmed";
+  if (confirm >= 1 || resolved >= 1) return "pending";
   return "unconfirmed";
+}
+
+export function statusFromConfirmations(count: number): StatusId {
+  return statusFromVotes(count, 0);
 }
 
 export function isCategoryId(value: string): value is CategoryId {

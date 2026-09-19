@@ -1,8 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { authMiddleware } from "@/lib/auth/middleware";
-import { getSql, type Sql } from "@/lib/db";
+import { getSql, withTransaction, type Sql } from "@/lib/db";
 import { asNumber, toIso } from "@/lib/format";
-import { isValidUsername, normalizeUsername } from "@/lib/auth/credentials";
+import { isValidUsername, normalizeUsername, usernameToEmail } from "@/lib/auth/credentials";
 import { assertImageDataUrl } from "@/lib/image-data-url";
 import type { Profile } from "@/lib/reports/types";
 
@@ -50,6 +50,32 @@ export async function ensureProfile(sql: Sql, userId: string): Promise<void> {
   await sql`
     insert into profiles (user_id, username, display_name, avatar_url)
     values (${userId}, ${username}, ${auth?.name ?? null}, ${auth?.image ?? null})
+    on conflict (user_id) do nothing
+  `;
+}
+
+export async function refreshReputation(sql: Sql, userId: string): Promise<void> {
+  await sql`
+    update profiles p
+    set reputation = greatest(
+          1,
+          least(
+            5,
+            3
+            + 0.15 * (
+              select count(*) from report_votes v
+              join reports r on r.id = v.report_id
+              where r.user_id = p.user_id and v.vote = 'confirm'
+            )
+            - 0.05 * (
+              select count(*) from report_votes v
+              join reports r on r.id = v.report_id
+              where r.user_id = p.user_id and v.vote = 'resolved'
+            )
+          )
+        ),
+        updated_at = now()
+    where user_id = ${userId}
   `;
 }
 
@@ -65,29 +91,33 @@ function mapProfile(row: ProfileRow): Profile {
   };
 }
 
+async function loadProfile(sql: Sql, userId: string): Promise<Profile> {
+  const rows = await sql<ProfileRow>`
+    select p.user_id, p.username, p.display_name, p.avatar_url, p.reputation, p.created_at,
+           (select count(*) from reports r where r.user_id = p.user_id) as report_count
+    from profiles p
+    where p.user_id = ${userId}
+    limit 1
+  `;
+  const row = rows[0];
+  if (!row) throw new Error("No se pudo cargar el perfil");
+  return mapProfile(row);
+}
+
 export const getMyProfile = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }): Promise<Profile> => {
     const sql = await getSql();
     await ensureProfile(sql, context.userId);
-    const rows = await sql<ProfileRow>`
-      select p.user_id, p.username, p.display_name, p.avatar_url, p.reputation, p.created_at,
-             (select count(*) from reports r where r.user_id = p.user_id) as report_count
-      from profiles p
-      where p.user_id = ${context.userId}
-      limit 1
-    `;
-    const row = rows[0];
-    if (!row) throw new Error("No se pudo cargar el perfil");
-    return mapProfile(row);
+    return loadProfile(sql, context.userId);
   });
 
 export const updateMyProfile = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: { username: string; displayName: string; avatarUrl?: string | null }) => {
-    const username = input.username.trim().toLowerCase();
-    if (!/^[a-z0-9_]{3,24}$/.test(username)) {
-      throw new Error("El usuario debe tener 3–24 caracteres (letras, números o _).");
+    const username = normalizeUsername(input.username);
+    if (!isValidUsername(username)) {
+      throw new Error("El usuario debe tener 3–20 caracteres (letras, números o _).");
     }
     const displayName = input.displayName.trim().slice(0, 48);
     if (!displayName) throw new Error("Escribe un nombre para mostrar.");
@@ -96,43 +126,51 @@ export const updateMyProfile = createServerFn({ method: "POST" })
     return { username, displayName, avatarUrl };
   })
   .handler(async ({ context, data }): Promise<Profile> => {
-    const sql = await getSql();
-    await ensureProfile(sql, context.userId);
+    return withTransaction(async (sql) => {
+      await ensureProfile(sql, context.userId);
+      const email = usernameToEmail(data.username);
 
-    const clash = await sql<{ user_id: string }>`
-      select user_id from profiles
-      where username = ${data.username} and user_id <> ${context.userId}
-      limit 1
-    `;
-    if (clash[0]) throw new Error("Ese nombre de usuario ya está en uso.");
-
-    if (data.avatarUrl === undefined) {
-      await sql`
-        update profiles
-        set username = ${data.username},
-            display_name = ${data.displayName},
-            updated_at = now()
-        where user_id = ${context.userId}
+      const profileClash = await sql<{ user_id: string }>`
+        select user_id from profiles
+        where username = ${data.username} and user_id <> ${context.userId}
+        limit 1
       `;
-    } else {
-      await sql`
-        update profiles
-        set username = ${data.username},
-            display_name = ${data.displayName},
-            avatar_url = ${data.avatarUrl},
-            updated_at = now()
-        where user_id = ${context.userId}
-      `;
-    }
+      if (profileClash[0]) throw new Error("Ese nombre de usuario ya está en uso.");
 
-    const rows = await sql<ProfileRow>`
-      select p.user_id, p.username, p.display_name, p.avatar_url, p.reputation, p.created_at,
-             (select count(*) from reports r where r.user_id = p.user_id) as report_count
-      from profiles p
-      where p.user_id = ${context.userId}
-      limit 1
-    `;
-    const row = rows[0];
-    if (!row) throw new Error("No se pudo actualizar el perfil");
-    return mapProfile(row);
+      const emailClash = await sql<{ id: string }>`
+        select id from "user"
+        where email = ${email} and id <> ${context.userId}
+        limit 1
+      `;
+      if (emailClash[0]) throw new Error("Ese nombre de usuario ya está en uso.");
+
+      await sql`
+        update "user"
+        set name = ${data.username},
+            email = ${email},
+            "updatedAt" = now()
+        where id = ${context.userId}
+      `;
+
+      if (data.avatarUrl === undefined) {
+        await sql`
+          update profiles
+          set username = ${data.username},
+              display_name = ${data.displayName},
+              updated_at = now()
+          where user_id = ${context.userId}
+        `;
+      } else {
+        await sql`
+          update profiles
+          set username = ${data.username},
+              display_name = ${data.displayName},
+              avatar_url = ${data.avatarUrl},
+              updated_at = now()
+          where user_id = ${context.userId}
+        `;
+      }
+
+      return loadProfile(sql, context.userId);
+    });
   });

@@ -46,7 +46,10 @@ export async function signUpWithPassword(username: string, password: string): Pr
 
 export async function signInWithPassword(username: string, password: string): Promise<void> {
   const name = normalizeUsername(username);
-  if (!name || !password) {
+  if (!isValidUsername(name)) {
+    throw new Error("Usa 3 a 20 letras, números o _");
+  }
+  if (!password) {
     throw new Error("Escribe usuario y contraseña");
   }
   const { error } = await authClient.signIn.email({

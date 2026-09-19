@@ -65,6 +65,14 @@ export function ProfileView() {
     }
   }
 
+  if (profile.isError) {
+    return (
+      <main className="mx-auto min-h-dvh max-w-lg bg-bg px-4 py-6">
+        <p className="text-sm text-muted">No se pudo cargar el perfil. Vuelve al mapa e intenta de nuevo.</p>
+      </main>
+    );
+  }
+
   if (profile.isPending || !profile.data) {
     return (
       <main className="mx-auto min-h-dvh max-w-lg bg-bg px-4 py-6">

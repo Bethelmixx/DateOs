@@ -9,7 +9,7 @@ import { Stars } from "@/components/chrome/stars";
 import { useAppStore } from "@/lib/app-store";
 import { categoryById, problemLabel, severityLabel } from "@/lib/categories";
 import { formatStamp, timeAgo } from "@/lib/format";
-import { getReport, voteOnReport } from "@/lib/reports/server";
+import { getReport, voteOnReport, deleteOwnReport } from "@/lib/reports/server";
 import type { Report } from "@/lib/reports/types";
 import { cn } from "@/lib/utils";
 
@@ -46,6 +46,16 @@ export function ReportDetailSheet({ preview }: { preview: Report | undefined }) 
       await queryClient.invalidateQueries({ queryKey: ["reports"] });
     },
     onError: (err: Error) => toast.error(err.message || "No se pudo registrar"),
+  });
+
+  const remove = useMutation({
+    mutationFn: () => deleteOwnReport({ data: selectedId! }),
+    onSuccess: async () => {
+      toast.success("Reporte borrado");
+      setSelectedReportId(null);
+      await queryClient.invalidateQueries({ queryKey: ["reports"] });
+    },
+    onError: (err: Error) => toast.error(err.message || "No se pudo borrar"),
   });
 
   return (
@@ -110,12 +120,24 @@ export function ReportDetailSheet({ preview }: { preview: Report | undefined }) 
             <Stat value={report.confirmationCount} label="Confirmaciones" />
             <Stat value={report.resolvedCount} label="Ya no ocurre" />
           </div>
-          <p className="text-[11px] text-subtle">Pasa a verde con 10 confirmaciones independientes.</p>
+          <p className="text-[11px] text-subtle">
+            Verde con 10 confirmaciones, o si 10 personas dicen que ya no ocurre.
+          </p>
 
           {report.isOwner ? (
-            <p className="rounded-xl border border-border bg-surface-2 px-3 py-2 text-xs text-muted">
-              Este reporte es tuyo. Otras personas podrán confirmarlo.
-            </p>
+            <div className="space-y-2">
+              <p className="rounded-xl border border-border bg-surface-2 px-3 py-2 text-xs text-muted">
+                Este reporte es tuyo. Otras personas podrán confirmarlo.
+              </p>
+              <Button
+                variant="ghost"
+                className="w-full text-status-red"
+                disabled={remove.isPending}
+                onClick={() => remove.mutate()}
+              >
+                {remove.isPending ? "Borrando…" : "Borrar reporte"}
+              </Button>
+            </div>
           ) : (
             <div className="grid grid-cols-2 gap-2">
               <Button

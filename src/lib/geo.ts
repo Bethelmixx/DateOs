@@ -22,6 +22,16 @@ export function padBounds(b: BoundingBox, factor = 0.15): BoundingBox {
   };
 }
 
+export function clampBounds(b: BoundingBox): BoundingBox {
+  let minLat = Math.min(90, Math.max(-90, b.minLat));
+  let maxLat = Math.min(90, Math.max(-90, b.maxLat));
+  let minLng = Math.min(180, Math.max(-180, b.minLng));
+  let maxLng = Math.min(180, Math.max(-180, b.maxLng));
+  if (minLat > maxLat) [minLat, maxLat] = [maxLat, minLat];
+  if (minLng > maxLng) [minLng, maxLng] = [maxLng, minLng];
+  return { minLat, maxLat, minLng, maxLng };
+}
+
 export function isValidLatLng(lat: number, lng: number) {
   return (
     Number.isFinite(lat) &&
