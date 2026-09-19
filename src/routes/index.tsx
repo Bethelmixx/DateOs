@@ -8,10 +8,10 @@ import { useCurrentUserState } from "@/lib/auth/use-current-user";
 export const Route = createFileRoute("/")({ component: Home });
 
 function Home() {
-  const { sessionUser, configError } = Route.useRouteContext();
+  const { sessionUser, configError, localMode } = Route.useRouteContext();
   const { user, isPending } = useCurrentUserState();
-  if (configError) return <ConfigScreen message={configError} />;
+  if (configError && !localMode) return <ConfigScreen message={configError} />;
   if (user || sessionUser) return <MapApp />;
-  if (isPending) return <BootScreen />;
+  if (isPending && !localMode) return <BootScreen />;
   return <LoginScreen />;
 }

@@ -11,7 +11,7 @@ import { Stars } from "@/components/chrome/stars";
 import { Skeleton } from "@/components/ui/skeleton";
 import { authEnabled, signOut } from "@/lib/auth/client";
 import { compressImage } from "@/lib/image";
-import { getMyProfile, updateMyProfile } from "@/lib/profiles/server";
+import { getMyProfileApi, updateMyProfileApi } from "@/lib/profiles/api";
 
 export function ProfileView() {
   const navigate = useNavigate();
@@ -21,7 +21,7 @@ export function ProfileView() {
 
   const profile = useQuery({
     queryKey: ["profile"],
-    queryFn: () => getMyProfile(),
+    queryFn: () => getMyProfileApi(),
   });
 
   const [username, setUsername] = useState("");
@@ -39,7 +39,7 @@ export function ProfileView() {
 
   const save = useMutation({
     mutationFn: () =>
-      updateMyProfile({
+      updateMyProfileApi({
         data: {
           username,
           displayName,

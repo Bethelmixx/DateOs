@@ -8,7 +8,8 @@ import { ReportDetailSheet } from "@/components/reports/report-detail-sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAppStore } from "@/lib/app-store";
 import { DEFAULT_CENTER, padBounds, type BoundingBox, type LatLng } from "@/lib/geo";
-import { listNearbyReports } from "@/lib/reports/server";
+import { isBrowserLocal } from "@/lib/local-store";
+import { listNearbyReportsApi } from "@/lib/reports/api";
 
 import { MapCanvas } from "./map-canvas";
 
@@ -55,7 +56,7 @@ export function MapApp() {
   const query = useQuery({
     queryKey: ["reports", padded, categories, statuses],
     queryFn: () =>
-      listNearbyReports({
+      listNearbyReportsApi({
         data: {
           ...padded!,
           categories,
@@ -132,6 +133,14 @@ export function MapApp() {
       <div className="pointer-events-none absolute bottom-6 left-4 z-20">
         <StatusLegend />
       </div>
+
+      {isBrowserLocal() ? (
+        <div className="pointer-events-none absolute inset-x-0 top-[max(5.5rem,calc(env(safe-area-inset-top)+4.5rem))] z-10 flex justify-center px-4">
+          <p className="rounded-full border border-border bg-surface/90 px-3 py-1.5 text-[11px] text-muted shadow-[var(--shadow-panel)]">
+            Modo local: los reportes quedan en este teléfono hasta que conectes Neon.
+          </p>
+        </div>
+      ) : null}
 
       {query.isError ? (
         <div className="absolute inset-x-0 top-28 z-10 flex justify-center px-6">

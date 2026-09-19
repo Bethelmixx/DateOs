@@ -1,8 +1,9 @@
 import { getRequest } from "@tanstack/react-start/server";
 import { auth, authConfigured } from "./server";
 import { ensureNeonReady } from "../db";
+import { resolveDatabaseUrl } from "../db-url";
 
-const databaseConfigured = Boolean(process.env.DATABASE_URL?.trim());
+const databaseConfigured = Boolean(resolveDatabaseUrl());
 
 export { authConfigured };
 

@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import { AuthProvider } from "@/lib/auth/provider";
 import { Providers } from "@/components/providers";
-import { productionConfigError } from "@/lib/env";
+import { isLocalMode } from "@/lib/env";
 import appCss from "../styles.css?url";
 
 const APP_NAME = "DateOs";
@@ -15,16 +15,21 @@ const fetchSessionUser = createServerFn({ method: "GET" }).handler(async () => {
 
 export const Route = createRootRoute({
   beforeLoad: async () => {
-    const configError = productionConfigError();
-    if (configError) return { sessionUser: null, configError };
+    const localMode = isLocalMode();
+    if (localMode) return { sessionUser: null, configError: null as string | null, localMode: true };
     try {
-      return { sessionUser: await fetchSessionUser(), configError: null as string | null };
+      return {
+        sessionUser: await fetchSessionUser(),
+        configError: null as string | null,
+        localMode: false,
+      };
     } catch (err) {
       console.error("[root] session load failed", err);
       const message = err instanceof Error ? err.message : "Error de servidor";
       return {
         sessionUser: null,
         configError: `No se pudo conectar. ${message}. Revisa DATABASE_URL (Neon pooled, host con -pooler).`,
+        localMode: false,
       };
     }
   },
@@ -63,10 +68,16 @@ export const Route = createRootRoute({
 });
 
 function RootDocument() {
+  const { localMode } = Route.useRouteContext();
   return (
     <html lang="es" className="antialiased" suppressHydrationWarning>
       <head>
         <HeadContent />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.__DATEOS_LOCAL__=${localMode ? "true" : "false"};`,
+          }}
+        />
       </head>
       <body className="bg-bg text-fg">
         <AuthProvider>

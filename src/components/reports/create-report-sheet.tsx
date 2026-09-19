@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAppStore } from "@/lib/app-store";
 import { CATEGORIES, PROBLEM_TYPES, SEVERITIES, type CategoryId, type SeverityId } from "@/lib/categories";
 import { compressImage } from "@/lib/image";
-import { createReport } from "@/lib/reports/server";
+import { createReportApi } from "@/lib/reports/api";
 import { cn } from "@/lib/utils";
 
 export function CreateReportSheet() {
@@ -41,7 +41,7 @@ export function CreateReportSheet() {
 
   const mutation = useMutation({
     mutationFn: () =>
-      createReport({
+      createReportApi({
         data: {
           category,
           problemType,

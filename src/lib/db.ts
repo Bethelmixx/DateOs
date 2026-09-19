@@ -1,12 +1,10 @@
 import { Pool, types, type PoolClient } from "pg";
 import { pendingMigrations } from "../../scripts/migration-plan.mjs";
+import { resolveDatabaseUrl } from "./db-url";
 
 export type DbSource = "neon" | "pglite";
 
-const rawDatabaseUrl =
-  typeof process !== "undefined" ? process.env.DATABASE_URL : undefined;
-const databaseUrl =
-  rawDatabaseUrl && rawDatabaseUrl.trim() ? rawDatabaseUrl : undefined;
+const databaseUrl = resolveDatabaseUrl();
 const onVercel = Boolean(process.env.VERCEL);
 
 export const dbSource: DbSource = databaseUrl ? "neon" : "pglite";
@@ -56,8 +54,7 @@ function toSql(run: Run): Sql {
 }
 
 function withSsl(url: string) {
-  if (/sslmode=/i.test(url)) return url;
-  return `${url}${url.includes("?") ? "&" : "?"}sslmode=require`;
+  return url;
 }
 
 export function getSharedPool(): Pool {

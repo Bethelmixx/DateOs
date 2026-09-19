@@ -2,8 +2,9 @@ import { betterAuth } from "better-auth";
 import { APIError } from "better-auth/api";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { getCookie } from "@tanstack/react-start/server";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { ensureDbReady, getPglite, getSharedPool } from "../db";
+import { resolveDatabaseUrl } from "../db-url";
 import { isValidUsername, normalizeUsername, usernameToEmail } from "./credentials";
 import { pgliteDialect } from "./pglite-dialect";
 
@@ -25,7 +26,15 @@ function localAuthSecret(): string {
   return globalAuthRef.__dateosAuthSecret__;
 }
 
-const secret = env("BETTER_AUTH_SECRET");
+function stableSecret(): string {
+  const explicit = env("BETTER_AUTH_SECRET");
+  if (explicit) return explicit;
+  if (onVercel) {
+    const seed = env("VERCEL_PROJECT_ID") ?? env("VERCEL_URL") ?? "dateos";
+    return createHash("sha256").update(`dateos-auth:${seed}`).digest("hex");
+  }
+  return localAuthSecret();
+}
 
 export const authConfigured = true;
 
@@ -73,7 +82,7 @@ const explicitBaseURL =
     ? `https://${env("VERCEL_PROJECT_PRODUCTION_URL")}`
     : vercelUrl);
 
-const databaseUrl = env("DATABASE_URL");
+const databaseUrl = resolveDatabaseUrl();
 
 const database = databaseUrl
   ? getSharedPool()
@@ -83,7 +92,7 @@ export const SESSION_TOKEN_COOKIE = "dateos.session_token";
 
 export const auth = betterAuth({
   baseURL: explicitBaseURL ?? "http://localhost:8080",
-  secret: secret ?? localAuthSecret(),
+  secret: stableSecret(),
   database,
   trustedOrigins: async (request) => {
     const origins = trustedOriginList();

@@ -5,8 +5,21 @@ import {
   normalizeUsername,
   usernameToEmail,
 } from "./credentials";
+import { isBrowserLocal, localSignIn, localSignOut, localSignUp } from "@/lib/local-store";
 
-export const authClient = createAuthClient();
+export const authClient = createAuthClient({
+  fetchOptions: {
+    customFetchImpl: async (url, init) => {
+      if (typeof window !== "undefined" && (window as Window & { __DATEOS_LOCAL__?: boolean }).__DATEOS_LOCAL__) {
+        return new Response(JSON.stringify({ user: null, session: null }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return fetch(url, init);
+    },
+  },
+});
 
 export const authEnabled = true;
 
@@ -28,6 +41,11 @@ function authErrorMessage(error: { message?: string; status?: number; code?: str
 }
 
 export async function signUpWithPassword(username: string, password: string): Promise<void> {
+  if (isBrowserLocal()) {
+    await localSignUp(username, password);
+    window.location.href = "/";
+    return;
+  }
   const name = normalizeUsername(username);
   if (!isValidUsername(name)) {
     throw new Error("Usa 3 a 20 letras, números o _");
@@ -45,6 +63,11 @@ export async function signUpWithPassword(username: string, password: string): Pr
 }
 
 export async function signInWithPassword(username: string, password: string): Promise<void> {
+  if (isBrowserLocal()) {
+    await localSignIn(username, password);
+    window.location.href = "/";
+    return;
+  }
   const name = normalizeUsername(username);
   if (!isValidUsername(name)) {
     throw new Error("Usa 3 a 20 letras, números o _");
@@ -61,6 +84,11 @@ export async function signInWithPassword(username: string, password: string): Pr
 }
 
 export async function signOut(redirectTo = "/"): Promise<void> {
+  if (isBrowserLocal()) {
+    localSignOut();
+    window.location.href = redirectTo;
+    return;
+  }
   const { error } = await authClient.signOut();
   if (error) throw new Error(error.message ?? "No se pudo cerrar sesión");
   window.location.href = redirectTo;

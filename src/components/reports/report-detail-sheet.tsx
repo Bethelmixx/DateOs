@@ -9,7 +9,7 @@ import { Stars } from "@/components/chrome/stars";
 import { useAppStore } from "@/lib/app-store";
 import { categoryById, problemLabel, severityLabel } from "@/lib/categories";
 import { formatStamp, timeAgo } from "@/lib/format";
-import { getReport, voteOnReport, deleteOwnReport } from "@/lib/reports/server";
+import { deleteOwnReportApi, getReportApi, voteOnReportApi } from "@/lib/reports/api";
 import type { Report } from "@/lib/reports/types";
 import { cn } from "@/lib/utils";
 
@@ -32,7 +32,7 @@ export function ReportDetailSheet({ preview }: { preview: Report | undefined }) 
 
   const detail = useQuery({
     queryKey: ["report", selectedId],
-    queryFn: () => getReport({ data: selectedId! }),
+    queryFn: () => getReportApi({ data: selectedId! }),
     enabled: Boolean(selectedId),
   });
 
@@ -40,7 +40,7 @@ export function ReportDetailSheet({ preview }: { preview: Report | undefined }) 
 
   const vote = useMutation({
     mutationFn: (kind: "confirm" | "resolved") =>
-      voteOnReport({ data: { reportId: selectedId!, vote: kind } }),
+      voteOnReportApi({ data: { reportId: selectedId!, vote: kind } }),
     onSuccess: async (updated) => {
       queryClient.setQueryData(["report", selectedId], updated);
       await queryClient.invalidateQueries({ queryKey: ["reports"] });
@@ -49,7 +49,7 @@ export function ReportDetailSheet({ preview }: { preview: Report | undefined }) 
   });
 
   const remove = useMutation({
-    mutationFn: () => deleteOwnReport({ data: selectedId! }),
+    mutationFn: () => deleteOwnReportApi({ data: selectedId! }),
     onSuccess: async () => {
       toast.success("Reporte borrado");
       setSelectedReportId(null);
