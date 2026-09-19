@@ -11,7 +11,7 @@ export const authClient = createAuthClient({
   fetchOptions: {
     customFetchImpl: async (url, init) => {
       if (typeof window !== "undefined" && (window as Window & { __DATEOS_LOCAL__?: boolean }).__DATEOS_LOCAL__) {
-        return new Response(JSON.stringify({ user: null, session: null }), {
+        return new Response("null", {
           status: 200,
           headers: { "Content-Type": "application/json" },
         });
@@ -43,7 +43,6 @@ function authErrorMessage(error: { message?: string; status?: number; code?: str
 export async function signUpWithPassword(username: string, password: string): Promise<void> {
   if (isBrowserLocal()) {
     await localSignUp(username, password);
-    window.location.href = "/";
     return;
   }
   const name = normalizeUsername(username);
@@ -65,7 +64,6 @@ export async function signUpWithPassword(username: string, password: string): Pr
 export async function signInWithPassword(username: string, password: string): Promise<void> {
   if (isBrowserLocal()) {
     await localSignIn(username, password);
-    window.location.href = "/";
     return;
   }
   const name = normalizeUsername(username);
@@ -86,7 +84,7 @@ export async function signInWithPassword(username: string, password: string): Pr
 export async function signOut(redirectTo = "/"): Promise<void> {
   if (isBrowserLocal()) {
     localSignOut();
-    window.location.href = redirectTo;
+    if (redirectTo && redirectTo !== "/") window.location.href = redirectTo;
     return;
   }
   const { error } = await authClient.signOut();

@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import { authClient, authEnabled } from "./client";
 import { getLocalSessionUser, isBrowserLocal, subscribeLocalAuth } from "@/lib/local-store";
 
@@ -23,20 +23,36 @@ export type CurrentUserState = {
   isPending: boolean;
 };
 
-function getLocalSnapshot(): AppUser | null {
+let cachedLocal: AppUser | null = null;
+let cachedLocalKey = "__none__";
+
+function readLocalUser(): AppUser | null {
   const session = getLocalSessionUser();
-  if (!session) return null;
-  return {
-    id: session.id,
-    displayName: session.displayName,
-    primaryEmail: null,
-    profileImageUrl: null,
-    isDevFallback: false,
-  };
+  const key = session ? `${session.id}:${session.displayName ?? ""}` : "";
+  if (key === cachedLocalKey) return cachedLocal;
+  cachedLocalKey = key;
+  cachedLocal = session
+    ? {
+        id: session.id,
+        displayName: session.displayName,
+        primaryEmail: null,
+        profileImageUrl: null,
+        isDevFallback: false,
+      }
+    : null;
+  return cachedLocal;
 }
 
 export function useCurrentUserState(): CurrentUserState {
-  const localUser = useSyncExternalStore(subscribeLocalAuth, getLocalSnapshot, () => null);
+  const [localUser, setLocalUser] = useState<AppUser | null>(() =>
+    typeof window === "undefined" ? null : readLocalUser(),
+  );
+  useEffect(() => {
+    if (!isBrowserLocal()) return;
+    setLocalUser(readLocalUser());
+    return subscribeLocalAuth(() => setLocalUser(readLocalUser()));
+  }, []);
+
   const { data, isPending } = authClient.useSession();
   if (isBrowserLocal()) return { user: localUser, isPending: false };
   if (!authEnabled) return { user: DEV_USER, isPending: false };
