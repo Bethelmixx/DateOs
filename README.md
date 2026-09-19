@@ -10,9 +10,12 @@ Copia `.env.example` y completa:
 
 | Variable | Uso |
 |---|---|
-| `DATABASE_URL` | Postgres (Neon en Vercel) |
-| `BETTER_AUTH_SECRET` | Secreto aleatorio, mínimo 32 caracteres |
-| `BETTER_AUTH_URL` | URL pública, ej. `https://dateos.vercel.app` |
+| `DATABASE_URL` | Neon **pooled** (`-pooler` en el host). Obligatorio en Vercel |
+| `BETTER_AUTH_SECRET` | Secreto aleatorio, mínimo 32 caracteres. Obligatorio en Vercel |
+| `BETTER_AUTH_URL` | URL pública exacta, ej. `https://dateos.vercel.app` |
+| `BETTER_AUTH_TRUSTED_ORIGINS` | Opcional, orígenes extra separados por coma |
+
+Sin esas tres primeras en Vercel la app no arranca a propósito: no hay fallback a PGLite ni a un secreto random.
 
 ## Local
 

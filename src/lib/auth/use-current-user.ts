@@ -23,7 +23,6 @@ export type CurrentUserState = {
 
 export function useCurrentUserState(): CurrentUserState {
   if (!authEnabled) return { user: DEV_USER, isPending: false };
-  // eslint-disable-next-line react-hooks/rules-of-hooks -- authEnabled is constant
   const { data, isPending } = authClient.useSession();
   const user = data?.user;
   return {
@@ -31,7 +30,8 @@ export function useCurrentUserState(): CurrentUserState {
       ? {
           id: user.id,
           displayName: user.name ?? null,
-          primaryEmail: user.email ?? null,
+          primaryEmail:
+            user.email?.endsWith("@users.dateos.local") ? null : (user.email ?? null),
           profileImageUrl: user.image ?? null,
           isDevFallback: false,
         }

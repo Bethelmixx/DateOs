@@ -136,9 +136,8 @@ export const listNearbyReports = createServerFn({ method: "GET" })
          and (
            $8::int = 0 or (
              case
-               when r.confirmation_count >= 10 then 'confirmed'
-               when r.resolved_count >= 10 and r.resolved_count >= r.confirmation_count then 'confirmed'
-               when r.confirmation_count >= 1 or r.resolved_count >= 1 then 'pending'
+               when (r.confirmation_count - r.resolved_count) >= 10 then 'confirmed'
+               when (r.confirmation_count - r.resolved_count) >= 1 then 'pending'
                else 'unconfirmed'
              end
            ) = any($9::text[])

@@ -134,10 +134,17 @@ export function MapApp() {
       </div>
 
       {query.isError ? (
-        <div className="pointer-events-none absolute inset-x-0 top-28 z-10 flex justify-center px-6">
+        <div className="absolute inset-x-0 top-28 z-10 flex justify-center px-6">
           <div className="rounded-2xl border border-status-red/40 bg-surface/92 px-4 py-3 text-center shadow-[var(--shadow-panel)] backdrop-blur-sm">
             <p className="text-sm font-medium">No se pudieron cargar los reportes</p>
             <p className="mt-1 text-xs text-muted">Revisa la conexión e intenta de nuevo.</p>
+            <button
+              type="button"
+              className="mt-2 text-xs font-medium text-primary"
+              onClick={() => void query.refetch()}
+            >
+              Reintentar
+            </button>
           </div>
         </div>
       ) : null}

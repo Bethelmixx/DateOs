@@ -61,7 +61,11 @@ function trustedOriginList(): string[] {
   addOrigin(out, env("VERCEL_URL"));
   addOrigin(out, env("VERCEL_PROJECT_PRODUCTION_URL"));
   addOrigin(out, env("VERCEL_BRANCH_URL"));
+  env("BETTER_AUTH_TRUSTED_ORIGINS")
+    ?.split(",")
+    .forEach((item) => addOrigin(out, item.trim()));
   out.add("https://*.vercel.app");
+  out.add("*.vercel.app");
   return Array.from(out);
 }
 
@@ -72,7 +76,6 @@ const explicitBaseURL =
     ? `https://${env("VERCEL_PROJECT_PRODUCTION_URL")}`
     : vercelUrl);
 
-const trustedOrigins = trustedOriginList();
 const databaseUrl = env("DATABASE_URL");
 if (onVercel && !databaseUrl) {
   throw new Error("DATABASE_URL is required on Vercel");
@@ -88,7 +91,19 @@ export const auth = betterAuth({
   baseURL: explicitBaseURL ?? "http://localhost:8080",
   secret: secret ?? localAuthSecret(),
   database,
-  trustedOrigins,
+  trustedOrigins: async (request) => {
+    const origins = trustedOriginList();
+    const header = request?.headers.get("origin");
+    if (header) {
+      try {
+        const host = new URL(header).hostname;
+        if (host.endsWith(".vercel.app") || host === "vercel.app") origins.push(header);
+      } catch {
+        /* ignore */
+      }
+    }
+    return origins;
+  },
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 8,

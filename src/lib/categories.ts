@@ -82,9 +82,9 @@ export function severityLabel(id: string) {
 }
 
 export function statusFromVotes(confirm: number, resolved: number): StatusId {
-  if (confirm >= 10) return "confirmed";
-  if (resolved >= 10 && resolved >= confirm) return "confirmed";
-  if (confirm >= 1 || resolved >= 1) return "pending";
+  const net = confirm - resolved;
+  if (net >= 10) return "confirmed";
+  if (net >= 1) return "pending";
   return "unconfirmed";
 }
 

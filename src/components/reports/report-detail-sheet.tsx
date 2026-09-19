@@ -121,7 +121,7 @@ export function ReportDetailSheet({ preview }: { preview: Report | undefined }) 
             <Stat value={report.resolvedCount} label="Ya no ocurre" />
           </div>
           <p className="text-[11px] text-subtle">
-            Verde con 10 confirmaciones, o si 10 personas dicen que ya no ocurre.
+            El pin pasa a verde con 10 confirmaciones netas (confirmaciones menos “ya no ocurre”).
           </p>
 
           {report.isOwner ? (
