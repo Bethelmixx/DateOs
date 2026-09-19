@@ -4,7 +4,6 @@ import { getCookie } from "@tanstack/react-start/server";
 import { randomBytes } from "node:crypto";
 import { Pool } from "pg";
 import { ensureDbReady, getPglite } from "../db";
-import { emailAndPasswordEnabled } from "./email-password";
 import { pgliteDialect } from "./pglite-dialect";
 
 void ensureDbReady();
@@ -23,10 +22,7 @@ function localAuthSecret(): string {
   return globalAuthRef.__dateosAuthSecret__;
 }
 
-const googleClientId = env("GOOGLE_CLIENT_ID");
-const googleClientSecret = env("GOOGLE_CLIENT_SECRET");
-
-export const authConfigured = Boolean(googleClientId && googleClientSecret);
+export const authConfigured = true;
 
 const vercelUrl = env("VERCEL_URL") ? `https://${env("VERCEL_URL")}` : undefined;
 const explicitBaseURL = env("BETTER_AUTH_URL") ?? vercelUrl;
@@ -56,16 +52,15 @@ export const auth = betterAuth({
   secret: env("BETTER_AUTH_SECRET") ?? localAuthSecret(),
   database,
   trustedOrigins,
-  socialProviders: authConfigured
-    ? {
-        google: {
-          clientId: googleClientId as string,
-          clientSecret: googleClientSecret as string,
-        },
-      }
-    : {},
+  emailAndPassword: {
+    enabled: true,
+    minPasswordLength: 8,
+    maxPasswordLength: 72,
+  },
   session: { cookieCache: { enabled: true, maxAge: 300 } },
-  ...(emailAndPasswordEnabled ? { emailAndPassword: { enabled: true } } : {}),
+  user: {
+    changeEmail: { enabled: false },
+  },
   advanced: {
     defaultCookieAttributes: {
       sameSite: "lax",

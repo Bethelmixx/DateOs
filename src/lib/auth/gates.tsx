@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Navigate } from "@tanstack/react-router";
-import { authEnabled, signIn, signOut } from "./client";
+import { authEnabled, signOut } from "./client";
 import { resolveSignInGateState } from "./sign-in-gate";
 import { useCurrentUser, useCurrentUserState } from "./use-current-user";
 
@@ -32,28 +32,14 @@ export function SignInGate({
   const state = resolveSignInGateState({ isPending, hasUser: user !== null });
   if (state === "pending") return null;
   if (state === "signed_in") return <>{children}</>;
-  return <>{fallback ?? <SignInButtons />}</>;
-}
-
-export function SignInButtons() {
-  return (
-    <div className="flex w-full max-w-sm flex-col gap-2">
-      <button
-        type="button"
-        onClick={() => void signIn("google", { callbackURL: "/" })}
-        className="w-full cursor-pointer rounded-md border border-neutral-300 px-4 py-2 hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
-      >
-        Continuar con Google
-      </button>
-    </div>
-  );
+  return <>{fallback ?? <Navigate to={SIGN_IN_PATH} />}</>;
 }
 
 export function UserButton() {
   const user = useCurrentUser();
   const [signingOut, setSigningOut] = useState(false);
   if (!user) return null;
-  const label = user.displayName ?? user.primaryEmail ?? "Cuenta";
+  const label = user.displayName ?? "Cuenta";
   return (
     <div className="flex items-center gap-2">
       {user.profileImageUrl ? (

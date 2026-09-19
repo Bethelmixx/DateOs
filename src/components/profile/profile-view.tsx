@@ -10,13 +10,11 @@ import { Label } from "@/components/ui/label";
 import { Stars } from "@/components/chrome/stars";
 import { Skeleton } from "@/components/ui/skeleton";
 import { authEnabled, signOut } from "@/lib/auth/client";
-import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { compressImage } from "@/lib/image";
 import { getMyProfile, updateMyProfile } from "@/lib/profiles/server";
 
 export function ProfileView() {
   const navigate = useNavigate();
-  const user = useCurrentUser();
   const queryClient = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [signingOut, setSigningOut] = useState(false);
@@ -151,8 +149,7 @@ export function ProfileView() {
       </form>
 
       <p className="mt-8 text-center text-[11px] text-subtle">
-        Tu correo no se muestra a otras personas.
-        {user?.primaryEmail ? ` Solo tú lo ves.` : null}
+        Tu cuenta es solo un usuario. No pedimos correo ni teléfono.
       </p>
 
       {authEnabled ? (

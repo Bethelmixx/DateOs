@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql, type Sql } from "@/lib/db";
 import { asNumber, toIso } from "@/lib/format";
+import { isValidUsername, normalizeUsername } from "@/lib/auth/credentials";
 import type { Profile } from "@/lib/reports/types";
 
 type ProfileRow = {
@@ -34,7 +35,8 @@ export async function ensureProfile(sql: Sql, userId: string): Promise<void> {
     select name, image from "user" where id = ${userId} limit 1
   `;
   const auth = authRows[0];
-  const base = slugify(auth?.name ?? "vecino");
+  const fromAuth = normalizeUsername(auth?.name ?? "");
+  const base = isValidUsername(fromAuth) ? fromAuth : slugify(auth?.name ?? "vecino");
   let username = base;
   for (let i = 0; i < 30; i += 1) {
     const clash = await sql<{ username: string }>`
