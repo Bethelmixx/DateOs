@@ -27,6 +27,7 @@ const globalRef = globalThis as typeof globalThis & {
   __pgSqlPromise__?: Promise<Sql>;
   __pgliteInstance__?: Promise<import("@electric-sql/pglite").PGlite>;
   __pgliteMigrateChain__?: Promise<void>;
+  __neonMigratePromise__?: Promise<void>;
 };
 
 const OID_INT8 = 20;
@@ -54,13 +55,18 @@ function toSql(run: Run): Sql {
   return sql;
 }
 
+function withSsl(url: string) {
+  if (/sslmode=/i.test(url)) return url;
+  return `${url}${url.includes("?") ? "&" : "?"}sslmode=require`;
+}
+
 export function getSharedPool(): Pool {
   if (!databaseUrl) {
     throw new Error("DATABASE_URL is required");
   }
   if (!globalRef.__dateosPgPool__) {
     globalRef.__dateosPgPool__ = new Pool({
-      connectionString: databaseUrl,
+      connectionString: withSsl(databaseUrl),
       max: onVercel ? 1 : 5,
       idleTimeoutMillis: 10_000,
       connectionTimeoutMillis: 8_000,
@@ -69,8 +75,46 @@ export function getSharedPool(): Pool {
   return globalRef.__dateosPgPool__;
 }
 
+export async function ensureNeonReady(): Promise<void> {
+  if (!databaseUrl) return;
+  globalRef.__neonMigratePromise__ ??= (async () => {
+    const pool = getSharedPool();
+    const client = await pool.connect();
+    try {
+      await client.query(
+        "create table if not exists _migrations (name text primary key, applied_at timestamptz not null default now())",
+      );
+      const doneRows = await client.query<{ name: string }>("select name from _migrations");
+      const done = doneRows.rows.map((r) => r.name);
+      const migrations = import.meta.glob("/migrations/*.sql", {
+        query: "?raw",
+        import: "default",
+        eager: true,
+      }) as Record<string, string>;
+      for (const { name, path } of pendingMigrations(Object.keys(migrations), done)) {
+        await client.query("BEGIN");
+        try {
+          await client.query(migrations[path]);
+          await client.query("insert into _migrations (name) values ($1)", [name]);
+          await client.query("COMMIT");
+        } catch (err) {
+          await client.query("ROLLBACK");
+          throw err;
+        }
+      }
+    } finally {
+      client.release();
+    }
+  })().catch((err) => {
+    globalRef.__neonMigratePromise__ = undefined;
+    throw err;
+  });
+  return globalRef.__neonMigratePromise__;
+}
+
 function createNeonSql(): Promise<Sql> {
   globalRef.__pgSqlPromise__ ??= (async () => {
+    await ensureNeonReady();
     const pool = getSharedPool();
     return toSql(async <T>(text: string, params: unknown[]) => {
       const res = await pool.query(text, params);

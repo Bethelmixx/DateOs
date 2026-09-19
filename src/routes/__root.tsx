@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import { AuthProvider } from "@/lib/auth/provider";
 import { Providers } from "@/components/providers";
+import { productionConfigError } from "@/lib/env";
 import appCss from "../styles.css?url";
 
 const APP_NAME = "DateOs";
@@ -13,7 +14,21 @@ const fetchSessionUser = createServerFn({ method: "GET" }).handler(async () => {
 });
 
 export const Route = createRootRoute({
-  beforeLoad: async () => ({ sessionUser: await fetchSessionUser() }),
+  beforeLoad: async () => {
+    const configError = productionConfigError();
+    if (configError) return { sessionUser: null, configError };
+    try {
+      return { sessionUser: await fetchSessionUser(), configError: null as string | null };
+    } catch (err) {
+      console.error("[root] session load failed", err);
+      const message = err instanceof Error ? err.message : "Error de servidor";
+      return {
+        sessionUser: null,
+        configError: `No se pudo conectar. ${message}. Revisa DATABASE_URL (Neon pooled, host con -pooler).`,
+      };
+    }
+  },
+  errorComponent: RootError,
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -64,3 +79,25 @@ function RootDocument() {
     </html>
   );
 }
+
+function RootError({ error }: { error: unknown }) {
+  const message = error instanceof Error ? error.message : "Error de servidor";
+  return (
+    <html lang="es">
+      <head>
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>DateOs</title>
+      </head>
+      <body style={{ background: "#0B1014", color: "#F3EEE4", fontFamily: "sans-serif", padding: 24 }}>
+        <p style={{ fontWeight: 700 }}>DateOs no pudo arrancar</p>
+        <p style={{ marginTop: 12, opacity: 0.8, fontSize: 14 }}>{message}</p>
+        <p style={{ marginTop: 16, opacity: 0.7, fontSize: 13 }}>
+          En Vercel configura DATABASE_URL (Neon pooler), BETTER_AUTH_SECRET y BETTER_AUTH_URL, y
+          vuelve a desplegar.
+        </p>
+      </body>
+    </html>
+  );
+}
+

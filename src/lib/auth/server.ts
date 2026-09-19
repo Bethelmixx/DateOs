@@ -26,9 +26,6 @@ function localAuthSecret(): string {
 }
 
 const secret = env("BETTER_AUTH_SECRET");
-if (onVercel && !secret) {
-  throw new Error("BETTER_AUTH_SECRET is required on Vercel");
-}
 
 export const authConfigured = true;
 
@@ -77,9 +74,6 @@ const explicitBaseURL =
     : vercelUrl);
 
 const databaseUrl = env("DATABASE_URL");
-if (onVercel && !databaseUrl) {
-  throw new Error("DATABASE_URL is required on Vercel");
-}
 
 const database = databaseUrl
   ? getSharedPool()
@@ -152,5 +146,9 @@ export const auth = betterAuth({
 });
 
 export function readSessionToken(): string | null {
-  return getCookie(SESSION_TOKEN_COOKIE) ?? null;
+  try {
+    return getCookie(SESSION_TOKEN_COOKIE) ?? null;
+  } catch {
+    return null;
+  }
 }

@@ -1,5 +1,6 @@
 import { getRequest } from "@tanstack/react-start/server";
 import { auth, authConfigured } from "./server";
+import { ensureNeonReady } from "../db";
 
 const databaseConfigured = Boolean(process.env.DATABASE_URL?.trim());
 
@@ -19,11 +20,17 @@ export type VerifiedUser = { id: string; email: string | null };
 
 export async function getSessionUser(): Promise<VerifiedUser | null> {
   if (!authConfigured) return null;
-  const request = getRequest();
-  if (!request) return null;
-  const session = await auth.api.getSession({ headers: request.headers });
-  if (!session?.user) return null;
-  return { id: session.user.id, email: session.user.email ?? null };
+  if (databaseConfigured) await ensureNeonReady();
+  try {
+    const request = getRequest();
+    if (!request) return null;
+    const session = await auth.api.getSession({ headers: request.headers });
+    if (!session?.user) return null;
+    return { id: session.user.id, email: session.user.email ?? null };
+  } catch (err) {
+    console.error("[auth] getSessionUser failed", err);
+    return null;
+  }
 }
 
 export async function requireUserId(): Promise<string> {
