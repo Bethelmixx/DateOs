@@ -10,6 +10,7 @@ import {
 } from "@/lib/categories";
 import { isValidLatLng } from "@/lib/geo";
 import { asBoolean, asNumber, toIso } from "@/lib/format";
+import { assertImageDataUrl } from "@/lib/image-data-url";
 import { ensureProfile } from "@/lib/profiles/server";
 import type { Report, VoteKind } from "./types";
 
@@ -141,9 +142,7 @@ export const createReport = createServerFn({ method: "POST" })
       if (description.length > 280) throw new Error("La descripción es demasiado larga.");
       if (!isValidLatLng(input.lat, input.lng)) throw new Error("Ubicación inválida");
       const photoData = input.photoData?.trim() ? input.photoData : null;
-      if (photoData && photoData.length > 380_000) {
-        throw new Error("La foto es demasiado pesada.");
-      }
+      if (photoData) assertImageDataUrl(photoData, "La foto");
       return {
         category: input.category,
         problemType: input.problemType,

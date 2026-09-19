@@ -3,6 +3,7 @@ import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql, type Sql } from "@/lib/db";
 import { asNumber, toIso } from "@/lib/format";
 import { isValidUsername, normalizeUsername } from "@/lib/auth/credentials";
+import { assertImageDataUrl } from "@/lib/image-data-url";
 import type { Profile } from "@/lib/reports/types";
 
 type ProfileRow = {
@@ -91,9 +92,7 @@ export const updateMyProfile = createServerFn({ method: "POST" })
     const displayName = input.displayName.trim().slice(0, 48);
     if (!displayName) throw new Error("Escribe un nombre para mostrar.");
     const avatarUrl = input.avatarUrl === undefined ? undefined : input.avatarUrl;
-    if (avatarUrl && avatarUrl.length > 380_000) {
-      throw new Error("La foto de perfil es demasiado pesada.");
-    }
+    if (avatarUrl) assertImageDataUrl(avatarUrl, "La foto de perfil");
     return { username, displayName, avatarUrl };
   })
   .handler(async ({ context, data }): Promise<Profile> => {

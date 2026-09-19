@@ -61,6 +61,15 @@ export const auth = betterAuth({
   user: {
     changeEmail: { enabled: false },
   },
+  rateLimit: {
+    enabled: true,
+    storage: "database",
+    modelName: "rateLimit",
+    customRules: {
+      "/sign-in/email": { window: 10, max: 5 },
+      "/sign-up/email": { window: 60, max: 3 },
+    },
+  },
   advanced: {
     defaultCookieAttributes: {
       sameSite: "lax",

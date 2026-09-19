@@ -1,5 +1,8 @@
--- AlertaVE community reports schema.
+-- DateOs community reports schema.
 -- user_id is TEXT to match Better Auth ids (and the preview 'dev-user').
+--
+-- TODO: si el volumen crece, migrar reports_geo_idx (lat, lng) a PostGIS/geohash
+-- y mover photo_data a un bucket/CDN en vez de base64 en la tabla.
 
 create table if not exists profiles (
   user_id      text primary key,

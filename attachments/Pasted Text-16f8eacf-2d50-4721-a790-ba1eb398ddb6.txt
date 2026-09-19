@@ -1,0 +1,96 @@
+Contexto: repo "DateOs" (TanStack Start + React 19, Better Auth, Postgres
+vía Neon en prod / PGLite en local, migraciones SQL en migrations/*.sql
+aplicadas por scripts/migrate.mjs en cada build de Vercel y por
+src/lib/db.ts en local). Se despliega en Vercel como UNA sola función
+serverless Node.js (nodejs22.x, preset "vercel" de Nitro, catch-all a
+/__server) — no hay Edge Runtime, así que pg/crypto funcionan sin
+problema. Quiero que implementes esta lista de cambios de una revisión
+de seguridad/calidad, pensada para que funcione bien en Vercel (no solo
+en local). Hacé los cambios directamente, corré typecheck y lint al
+final, y verificá que `npm run build` complete sin errores (ese comando
+también corre db:migrate).
+
+=== 1. Rate limiting en login/signup (CRÍTICO) ===
+Archivo: src/lib/auth/server.ts
+
+Agregá `rateLimit` a la config de `betterAuth({...})`:
+- enabled: true (no confiar en el default por NODE_ENV)
+- storage: "database" — OBLIGATORIO en Vercel: el storage en memoria
+  (default de better-auth) NO sirve acá porque cada invocación
+  serverless puede ser una instancia nueva sin memoria compartida; sin
+  esto el rate limit sería casi decorativo en producción.
+- modelName: "rateLimit" (default, dejalo explícito)
+- customRules como OBJETO (no array) keyeado por path, ej:
+    customRules: {
+      "/sign-in/email": { window: 10, max: 5 },
+      "/sign-up/email": { window: 60, max: 3 },
+    }
+
+NO agregues `advanced.ipAddress.ipAddressHeaders` ni `trustedProxies`.
+En Vercel el header default que usa better-auth (x-forwarded-for) ya es
+confiable tal cual: Vercel lo sobreescribe con la IP real del cliente y
+NO deja pasar un x-forwarded-for falsificado desde afuera (salvo que
+haya un proxy propio delante de Vercel, que acá no lo hay). Agregar esa
+config sería trabajo de más y no cambia nada.
+
+Esto requiere una tabla nueva. Agregá una migración
+migrations/0003_rate_limit.sql siguiendo el estilo de
+migrations/0001_auth.sql (columnas camelCase entre comillas dobles):
+
+  create table if not exists "rateLimit" (
+    "id" text primary key not null,
+    "key" text,
+    "count" integer,
+    "lastRequest" bigint
+  );
+
+Como scripts/migrate.mjs y src/lib/db.ts ya leen todo migrations/*.sql
+automáticamente, no hace falta tocar nada más para que esto se aplique
+solo en el próximo deploy de Vercel. Antes de aplicar: confirmá contra
+la versión instalada de better-auth (package.json dice ~1.6.30) que el
+nombre de tabla/columnas no cambió.
+
+Nota aparte (no es código, es config de Vercel/Neon — solo avisame si
+la ves mal): en el dashboard de Vercel, DATABASE_URL debería apuntar al
+endpoint "pooled" de Neon (el host suele tener "-pooler" en el nombre).
+Con storage:"database" el rate limiter va a pegarle a Postgres en cada
+intento de login/signup, y en serverless sin pooling se puede agotar el
+límite de conexiones directas de Neon bajo concurrencia. Si ves que
+DATABASE_URL no es el pooled, decímelo en vez de cambiarlo vos.
+
+=== 2. Validar que photoData/avatarUrl sean imágenes reales (ALTO) ===
+Archivos: src/lib/reports/server.ts (createReport validator) y
+src/lib/profiles/server.ts (updateMyProfile validator)
+
+Hoy solo se valida el tamaño (380_000 chars). Agregá una validación de
+formato antes de aceptar el dato: debe matchear
+  /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/
+y el payload base64 decodificado no debe superar ~280KB reales (el
+límite actual es sobre el string completo con el prefijo data URL, dejá
+margen). Si no matchea, rechazar con un error claro en español, mismo
+estilo que los otros throw new Error(...) de esos archivos.
+
+=== 3. Limpieza de naming (BAJO) ===
+Buscá referencias sueltas a "AlertaVE" en comentarios y SQL (por lo
+menos migrations/0002_schema.sql) y reemplazalas por "DateOs".
+
+=== 4. Preguntame antes de tocar esto — no lo implementes todavía ===
+a) Difuminar/redondear lat/lng en reportes de categoría "seguridad"
+   antes de guardarlos o servirlos (por privacidad de ubicación exacta).
+   Mostrame una propuesta de cuánto difuminar (¿~50-100m?) y si aplica
+   a todas las categorías o solo "seguridad" antes de tocar código.
+b) Agregar endpoint deleteOwnReport en src/lib/reports/server.ts (con
+   chequeo user_id = context.userId). Hoy los reportes son inmutables
+   una vez creados — decime si eso era intencional antes de cambiarlo.
+
+=== 5. Backlog, no lo hagas ahora ===
+Dejá un TODO en migrations/0002_schema.sql sobre migrar el índice
+(lat, lng) a PostGIS/geohash si crece el volumen, y considerar mover
+photo_data a un bucket/CDN en vez de base64 en la tabla.
+
+Al terminar los puntos 1-3: corré npm run typecheck, npm run lint, y
+npm run build completo (valida que la migración nueva y el preset de
+Vercel/Nitro no rompan el build). Probá login/signup en local para
+confirmar que el rate limit no molesta el uso normal — 5 intentos de
+login en 10s y 3 signups por minuto son los límites que puse arriba,
+ajustalos si te parecen muy agresivos para probar a mano.
