@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Camera, ChevronLeft } from "lucide-react";
@@ -10,13 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Stars } from "@/components/chrome/stars";
 import { Skeleton } from "@/components/ui/skeleton";
 import { authEnabled, signOut } from "@/lib/auth/client";
-import { hasGateSessionMarker } from "@/lib/auth/gate-session-marker";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { compressImage } from "@/lib/image";
 import { getMyProfile, updateMyProfile } from "@/lib/profiles/server";
-
-const subscribeToNothing = () => () => {};
-const noGateSessionOnServer = () => false;
 
 export function ProfileView() {
   const navigate = useNavigate();
@@ -24,11 +20,6 @@ export function ProfileView() {
   const queryClient = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [signingOut, setSigningOut] = useState(false);
-  const gateSession = useSyncExternalStore(
-    subscribeToNothing,
-    hasGateSessionMarker,
-    noGateSessionOnServer,
-  );
 
   const profile = useQuery({
     queryKey: ["profile"],
@@ -164,7 +155,7 @@ export function ProfileView() {
         {user?.primaryEmail ? ` Solo tú lo ves.` : null}
       </p>
 
-      {authEnabled && !gateSession ? (
+      {authEnabled ? (
         <Button
           type="button"
           variant="ghost"

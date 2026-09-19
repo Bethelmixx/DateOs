@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import { AuthProvider } from "@/lib/auth/provider";
-import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { Providers } from "@/components/providers";
 import appCss from "../styles.css?url";
 
@@ -25,12 +24,18 @@ export const Route = createRootRoute({
         content: "Reportes comunitarios en tiempo real sobre problemas en Venezuela.",
       },
       { name: "theme-color", content: "#0B1014" },
+      { property: "og:title", content: APP_NAME },
+      {
+        property: "og:description",
+        content: "Reportes comunitarios en tiempo real sobre problemas en Venezuela.",
+      },
+      { property: "og:image", content: "/og.jpg" },
     ],
     links: [
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
       { rel: "stylesheet", href: appCss },
-      { rel: "manifest", href: "/__grok/manifest.webmanifest" },
-      { rel: "apple-touch-icon", href: "/__grok/icon-180.png" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "apple-touch-icon", href: "/favicon.svg" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
@@ -49,7 +54,6 @@ function RootDocument() {
         <HeadContent />
       </head>
       <body className="bg-bg text-fg">
-        <PreviewHostBridge />
         <AuthProvider>
           <Providers>
             <Outlet />

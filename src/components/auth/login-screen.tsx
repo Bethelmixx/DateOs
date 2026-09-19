@@ -10,7 +10,7 @@ export function LoginScreen() {
     setError(null);
     setPending(true);
     try {
-      await signIn("grok-google", { callbackURL: "/" });
+      await signIn("google", { callbackURL: "/" });
     } catch (err) {
       setPending(false);
       setError(err instanceof Error ? err.message : "No se pudo iniciar sesión");
@@ -48,13 +48,6 @@ export function LoginScreen() {
             {pending ? "Conectando…" : "Continuar con Google"}
           </Button>
           {error ? <p className="text-center text-xs text-status-red">{error}</p> : null}
-          <a
-            href="/DateOs.zip"
-            download="DateOs.zip"
-            className="flex h-12 w-full items-center justify-center rounded-lg border border-border bg-surface text-sm font-medium text-fg"
-          >
-            Descargar proyecto (.zip)
-          </a>
           <p className="text-center text-[11px] leading-relaxed text-subtle">
             No pedimos número de teléfono. Tu correo no se muestra en los reportes.
           </p>
