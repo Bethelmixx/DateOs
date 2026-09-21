@@ -4,18 +4,15 @@ import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { getCookie } from "@tanstack/react-start/server";
 import { createHash, randomBytes } from "node:crypto";
 import { ensureDbReady, getPglite, getSharedPool } from "../db";
-import { resolveDatabaseUrl } from "../db-url";
+import { envGet, resolveDatabaseUrl } from "../db-url";
 import { isValidUsername, normalizeUsername, usernameToEmail } from "./credentials";
 import { pgliteDialect } from "./pglite-dialect";
 
 void ensureDbReady();
 
-const env = (key: string): string | undefined => {
-  const value = process.env[key]?.trim();
-  return value ? value : undefined;
-};
+const env = (key: string): string | undefined => envGet(key);
 
-const onVercel = Boolean(env("VERCEL"));
+const onVercel = Boolean(env("VERCEL") || env("VERCEL_ENV"));
 
 const globalAuthRef = globalThis as typeof globalThis & {
   __dateosAuthSecret__?: string;

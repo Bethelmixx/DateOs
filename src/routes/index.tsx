@@ -13,5 +13,5 @@ function Home() {
   if (configError && !localMode) return <ConfigScreen message={configError} />;
   if (user || sessionUser) return <MapApp />;
   if (isPending && !localMode) return <BootScreen />;
-  return <LoginScreen />;
+  return <LoginScreen localMode={localMode} />;
 }

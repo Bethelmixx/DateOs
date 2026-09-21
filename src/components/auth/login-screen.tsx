@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 
 type Mode = "entrar" | "crear";
 
-export function LoginScreen() {
+export function LoginScreen({ localMode = false }: { localMode?: boolean }) {
   const [mode, setMode] = useState<Mode>("entrar");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -42,6 +42,17 @@ export function LoginScreen() {
             <p className="max-w-[20rem] text-sm leading-relaxed text-muted">
               Reporta cortes, agua, tráfico y lo que pasa en tu zona. La calle se verifica entre todos.
             </p>
+            {localMode ? (
+              <div className="rounded-xl border border-status-yellow/40 bg-surface p-3 text-left text-[12px] leading-relaxed text-muted">
+                <p className="font-medium text-fg">Los reportes no se comparten</p>
+                <p className="mt-1">
+                  Vercel no está leyendo la base. En Settings → Environment Variables,{" "}
+                  <code className="text-primary">DATABASE_URL</code> tiene que estar en{" "}
+                  <strong className="text-fg">Production</strong>. Luego Deployments → ⋮ → Redeploy
+                  (desmarca Use existing Build Cache).
+                </p>
+              </div>
+            ) : null}
           </div>
 
           <div className="flex gap-3">

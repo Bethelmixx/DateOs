@@ -1,11 +1,11 @@
 import { Pool, types, type PoolClient } from "pg";
 import { pendingMigrations } from "../../scripts/migration-plan.mjs";
-import { resolveDatabaseUrl } from "./db-url";
+import { envGet, resolveDatabaseUrl } from "./db-url";
 
 export type DbSource = "neon" | "pglite";
 
 const databaseUrl = resolveDatabaseUrl();
-const onVercel = Boolean(process.env.VERCEL);
+const onVercel = Boolean(envGet("VERCEL") || envGet("VERCEL_ENV"));
 
 export const dbSource: DbSource = databaseUrl ? "neon" : "pglite";
 

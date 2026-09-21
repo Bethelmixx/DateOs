@@ -1,7 +1,7 @@
-import { resolveDatabaseUrl } from "./db-url";
+import { envGet, resolveDatabaseUrl } from "./db-url";
 
 export function isLocalMode(): boolean {
-  return Boolean(process.env.VERCEL) && !resolveDatabaseUrl();
+  return Boolean(envGet("VERCEL") || envGet("VERCEL_ENV")) && !resolveDatabaseUrl();
 }
 
 export function productionConfigError(): string | null {
