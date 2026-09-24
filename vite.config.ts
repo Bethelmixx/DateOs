@@ -60,6 +60,9 @@ export default defineConfig(({ command, isPreview }) => ({
       ? [
           nitro({
             preset: process.env.NITRO_PRESET || (process.env.VERCEL ? "vercel" : "node-server"),
+            externals: {
+              external: ["@electric-sql/pglite", "pg"],
+            },
           }),
         ]
       : []),

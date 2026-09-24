@@ -124,32 +124,44 @@ function createNeonSql(): Promise<Sql> {
   return globalRef.__pgSqlPromise__;
 }
 
-async function createPgliteSql(): Promise<Sql> {
-  globalRef.__pgliteInstance__ ??= (async () => {
-    const { PGlite } = await import("@electric-sql/pglite");
-    const onRailway = Boolean(envGet("RAILWAY_ENVIRONMENT") || envGet("RAILWAY_PROJECT_ID"));
-    let dataDir: string | undefined;
-    if (onRailway) {
+async function openPglite(): Promise<import("@electric-sql/pglite").PGlite> {
+  const { PGlite } = await import("@electric-sql/pglite");
+  const parsers = {
+    [OID_INT8]: Number,
+    [OID_DATE]: identity,
+    [OID_INTERVAL]: identity,
+  };
+  const onRailway = Boolean(envGet("RAILWAY_ENVIRONMENT") || envGet("RAILWAY_PROJECT_ID"));
+  if (onRailway) {
+    try {
       const { mkdirSync } = await import("node:fs");
       const { join } = await import("node:path");
-      dataDir = envGet("DATEOS_DATA_DIR") ?? join(process.cwd(), ".data", "pglite");
+      const dataDir = envGet("DATEOS_DATA_DIR") ?? join(process.cwd(), ".data", "pglite");
       mkdirSync(dataDir, { recursive: true });
+      const fileDb = new PGlite(dataDir, { parsers });
+      await fileDb.waitReady;
+      return fileDb;
+    } catch (err) {
+      console.error("[db] PGLite en disco falló, uso memoria", err);
     }
-    const parsers = {
-      [OID_INT8]: Number,
-      [OID_DATE]: identity,
-      [OID_INTERVAL]: identity,
-    };
-    const pg = dataDir ? new PGlite(dataDir, { parsers }) : new PGlite({ parsers });
-    await pg.waitReady;
-    await pg.exec(
-      "create table if not exists _migrations (name text primary key, applied_at timestamptz not null default now())",
-    );
-    return pg;
-  })().catch((err) => {
-    globalRef.__pgliteInstance__ = undefined;
-    throw err;
-  });
+  }
+  const memoryDb = new PGlite({ parsers });
+  await memoryDb.waitReady;
+  return memoryDb;
+}
+
+async function createPgliteSql(): Promise<Sql> {
+  globalRef.__pgliteInstance__ ??= openPglite()
+    .then(async (pg) => {
+      await pg.exec(
+        "create table if not exists _migrations (name text primary key, applied_at timestamptz not null default now())",
+      );
+      return pg;
+    })
+    .catch((err) => {
+      globalRef.__pgliteInstance__ = undefined;
+      throw err;
+    });
   const pg = await globalRef.__pgliteInstance__;
 
   const migrate = async (): Promise<void> => {
