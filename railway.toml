@@ -3,7 +3,7 @@ builder = "NIXPACKS"
 buildCommand = "NITRO_PRESET=node-server npm run build"
 
 [deploy]
-startCommand = "HOST=0.0.0.0 NITRO_HOST=0.0.0.0 node .output/server/index.mjs"
+startCommand = "node scripts/railway-start.mjs"
 healthcheckPath = "/"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
