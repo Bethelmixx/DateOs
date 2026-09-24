@@ -59,10 +59,7 @@ export default defineConfig(({ command, isPreview }) => ({
     ...(command === "build" || isPreview
       ? [
           nitro({
-            preset:
-              process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_PROJECT_ID
-                ? "node-server"
-                : "vercel",
+            preset: process.env.NITRO_PRESET || (process.env.VERCEL ? "vercel" : "node-server"),
           }),
         ]
       : []),
