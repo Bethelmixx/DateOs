@@ -13,6 +13,7 @@ void ensureDbReady();
 const env = (key: string): string | undefined => envGet(key);
 
 const onVercel = Boolean(env("VERCEL") || env("VERCEL_ENV"));
+const onRailway = Boolean(env("RAILWAY_ENVIRONMENT") || env("RAILWAY_PROJECT_ID"));
 
 const globalAuthRef = globalThis as typeof globalThis & {
   __dateosAuthSecret__?: string;
@@ -26,10 +27,12 @@ function localAuthSecret(): string {
 function stableSecret(): string {
   const explicit = env("BETTER_AUTH_SECRET");
   if (explicit) return explicit;
-  if (onVercel) {
-    const seed = env("VERCEL_PROJECT_ID") ?? env("VERCEL_URL") ?? "dateos";
-    return createHash("sha256").update(`dateos-auth:${seed}`).digest("hex");
-  }
+  const seed =
+    env("RAILWAY_PROJECT_ID") ??
+    env("VERCEL_PROJECT_ID") ??
+    env("RAILWAY_PUBLIC_DOMAIN") ??
+    env("VERCEL_URL");
+  if (seed) return createHash("sha256").update(`dateos-auth:${seed}`).digest("hex");
   return localAuthSecret();
 }
 
@@ -64,17 +67,26 @@ function trustedOriginList(): string[] {
   addOrigin(out, env("VERCEL_URL"));
   addOrigin(out, env("VERCEL_PROJECT_PRODUCTION_URL"));
   addOrigin(out, env("VERCEL_BRANCH_URL"));
+  addOrigin(out, env("RAILWAY_PUBLIC_DOMAIN"));
   env("BETTER_AUTH_TRUSTED_ORIGINS")
     ?.split(",")
     .forEach((item) => addOrigin(out, item.trim()));
   out.add("https://*.vercel.app");
   out.add("*.vercel.app");
+  out.add("https://*.up.railway.app");
   return Array.from(out);
 }
 
+const railwayHost = env("RAILWAY_PUBLIC_DOMAIN");
+const railwayUrl = railwayHost
+  ? railwayHost.startsWith("http")
+    ? railwayHost
+    : `https://${railwayHost}`
+  : undefined;
 const vercelUrl = env("VERCEL_URL") ? `https://${env("VERCEL_URL")}` : undefined;
 const explicitBaseURL =
   env("BETTER_AUTH_URL") ??
+  railwayUrl ??
   (env("VERCEL_PROJECT_PRODUCTION_URL")
     ? `https://${env("VERCEL_PROJECT_PRODUCTION_URL")}`
     : vercelUrl);
@@ -97,7 +109,13 @@ export const auth = betterAuth({
     if (header) {
       try {
         const host = new URL(header).hostname;
-        if (host.endsWith(".vercel.app") || host === "vercel.app") origins.push(header);
+        if (
+          host.endsWith(".vercel.app") ||
+          host === "vercel.app" ||
+          host.endsWith(".up.railway.app")
+        ) {
+          origins.push(header);
+        }
       } catch {
         /* ignore */
       }
@@ -141,7 +159,7 @@ export const auth = betterAuth({
     defaultCookieAttributes: {
       sameSite: "lax",
       path: "/",
-      secure: onVercel ? true : undefined,
+      secure: onVercel || onRailway ? true : undefined,
     },
     cookies: {
       session_token: { name: SESSION_TOKEN_COOKIE },
