@@ -62,6 +62,11 @@ export default defineConfig(({ command, isPreview }) => ({
             preset: process.env.NITRO_PRESET || (process.env.VERCEL ? "vercel" : "node-server"),
             externals: {
               external: ["@electric-sql/pglite", "pg"],
+              traceInclude: [
+                "node_modules/@electric-sql/pglite/dist/pglite.data",
+                "node_modules/@electric-sql/pglite/dist/pglite.wasm",
+                "node_modules/@electric-sql/pglite/dist/initdb.wasm",
+              ],
             },
           }),
         ]

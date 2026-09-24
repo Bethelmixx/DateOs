@@ -4,12 +4,17 @@ import { pathToFileURL } from "node:url";
 
 const root = process.cwd();
 const src = join(root, "node_modules/@electric-sql/pglite/dist");
-const dest = join(root, ".output/server/__libs");
+const assets = existsSync(src)
+  ? readdirSync(src).filter((name) => name.endsWith(".data") || name.endsWith(".wasm"))
+  : [];
 
-if (existsSync(src)) {
+for (const dest of [
+  join(root, ".output/server/_libs"),
+  join(root, ".output/server/__libs"),
+  join(root, ".output/server/node_modules/@electric-sql/pglite/dist"),
+]) {
   mkdirSync(dest, { recursive: true });
-  for (const name of readdirSync(src)) {
-    if (!name.endsWith(".data") && !name.endsWith(".wasm")) continue;
+  for (const name of assets) {
     copyFileSync(join(src, name), join(dest, name));
   }
 }
