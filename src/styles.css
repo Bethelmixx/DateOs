@@ -80,6 +80,10 @@
   font-family: var(--font-sans);
 }
 
+.leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.82) contrast(0.92);
+}
+
 .leaflet-control-attribution {
   background: rgb(11 16 20 / 72%) !important;
   color: var(--color-subtle) !important;

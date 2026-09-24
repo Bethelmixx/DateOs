@@ -3,7 +3,7 @@ import type { Map as LeafletMap, Marker as LeafletMarker, LeafletMouseEvent } fr
 import type { Report } from "@/lib/reports/types";
 import { DEFAULT_CENTER, DEFAULT_ZOOM, isValidLatLng, type BoundingBox, type LatLng } from "@/lib/geo";
 
-const TILES = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+const TILES = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 
 type LeafletNS = typeof import("leaflet");
 
@@ -67,21 +67,10 @@ export function MapCanvas({
         zoom: DEFAULT_ZOOM,
       });
       const tiles = L.tileLayer(TILES, {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; CARTO',
-        subdomains: "abcd",
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
         maxZoom: 19,
       }).addTo(map);
       map.attributionControl.setPrefix("");
-      let switched = false;
-      tiles.on("tileerror", () => {
-        if (switched) return;
-        switched = true;
-        map.removeLayer(tiles);
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
-          maxZoom: 19,
-        }).addTo(map);
-      });
 
       const emit = () => {
         const b = map.getBounds();
